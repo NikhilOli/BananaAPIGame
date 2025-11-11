@@ -1,0 +1,8 @@
+cat > .gitignore <<'EOF'
+node_modules/
+.vscode/
+.DS_Store
+firebase-config.js        
+.env
+*.log
+EOF

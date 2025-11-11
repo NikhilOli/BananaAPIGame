@@ -1,0 +1,92 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Register - Banana Quiz</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="center-wrap">
+    <div class="card auth-card">
+      <div class="logo-row">
+        <div class="logo">🍌</div>
+        <h1 class="title">Banana Quiz</h1>
+      </div>
+
+      <p class="lead">Create your account and save scores. Quick signup — free forever.</p>
+
+      <label>Name
+        <input id="name" type="text" placeholder="e.g. Nikhil Rai" />
+      </label>
+
+      <label>Email
+        <input id="email" type="email" placeholder="you@example.com" />
+      </label>
+
+      <label>Password
+        <input id="password" type="password" placeholder="Enter a secure password" />
+      </label>
+
+      <div class="btn-row">
+        <button id="registerBtn" class="btn primary">Create account</button>
+        <a class="btn ghost" href="login.html">Sign in</a>
+      </div>
+
+      <p id="msg" class="small muted"></p>
+
+      <div class="foot small muted">By creating an account you agree to the terms. This is a demo project for university.</div>
+    </div>
+  </div>
+
+  <!-- Firebase SDKs (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+  <script src="firebase-config.js"></script>
+  <script>
+    // Initialize Firebase (firebase-config.js must define firebaseConfig)
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // Register handler
+    document.getElementById('registerBtn').addEventListener('click', async () => {
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value.trim();
+      const msg = document.getElementById('msg');
+      msg.textContent = '';
+      if (!name || !email || !password) {
+        msg.textContent = 'Enter name, email and password';
+        return;
+      }
+
+      try {
+        // create user with email/password
+        const res = await auth.createUserWithEmailAndPassword(email, password);
+
+        // set displayName on auth user (frontend user object)
+        await res.user.updateProfile({ displayName: name });
+
+        // create user document in Firestore (uid as doc id)
+        await db.collection('users').doc(res.user.uid).set({
+          email: email,
+          name: name,
+          totalScore: 0,
+          gamesPlayed: 0,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          lastActive: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        msg.textContent = 'Registered successfully! Redirecting...';
+        setTimeout(() => location.href = 'login.html', 900);
+      } catch (e) {
+        console.error(e);
+        msg.textContent = 'Error: ' + e.message;
+      }
+    });
+  </script>
+</body>
+</html>
