@@ -1,0 +1,428 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Play - Banana Quiz</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="play.css" />
+</head>
+<body>
+  <div class="center-wrap">
+    <div class="card">
+
+      <!-- LEFT: Game area -->
+      <div class="left">
+        <div class="header">
+          <div class="logo">🍌</div>
+          <div>
+            <div class="title">Banana Game - Play Now🎮</div>
+            <div class="player" id="playerInfo">Loading player…</div>
+          </div>
+        </div>
+
+        <div class="image-wrap" id="imageWrap">
+          <div id="imgPlaceholder" class="muted">No question loaded. Click <strong>Get Question</strong>.</div>
+          <img id="qImg" src="" alt="Question image" style="display:none" />
+        </div>
+
+        <div class="qmeta" id="qMeta"></div>
+
+        <div class="input-row" style="margin-top:14px;">
+          <input id="answerInput" class="answer-input" placeholder="Type your answer here" autocomplete="off" />
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <button id="checkBtn" class="btn btn-primary">Check Answer</button>
+            <button id="nextBtn" class="btn btn-secondary" style="margin-top:6px;">Next</button>
+          </div>
+        </div>
+
+        <div id="feedback" class="muted"></div>
+        <div id="lastResult" class="result" aria-live="polite"></div>
+
+        <div class="card-footer">Ask for a hint in the demo if needed - the API provides an image and a solution.</div>
+      </div>
+
+      <!-- RIGHT: Controls / score -->
+      <div class="right">
+        <div class="score-card">
+          <div class="score-big">
+            <div>
+              <div style="font-size:0.9rem;color:#334155">Session Score</div>
+              <div class="small-note">Points you earned this session (not yet submitted)</div>
+            </div>
+            <div class="score-number" id="score">0</div>
+          </div>
+
+          <div class="controls">
+            <button id="getQ" class="btn btn-secondary">Get Question</button>
+            <button id="skipQ" class="btn btn-secondary">Skip</button>
+          </div>
+
+          <div id="profileSnapshot" style="margin-top:12px; text-align:left;">
+              <div style="font-weight:700; margin-bottom:6px;">Your profile</div>
+              <div class="muted small-note">Total Score: <strong id="totalScoreDisplay">—</strong></div>
+              <div class="muted small-note" style="margin-top:6px;">Games Played: <strong id="gamesPlayedDisplay">—</strong></div>
+          </div>
+
+          <div class="submit-area">
+            <button id="submitScore" class="btn btn-primary" disabled>Submit Score</button>
+            <div id="submitInfo" class="muted small-note">Submit your session score to save it to your profile.</div>
+          </div>
+
+        </div>
+
+        <div style="height:12px"></div>
+
+        <div class="score-card" style="margin-top:12px;">
+          <div style="font-weight:700">How it works</div>
+          <div class="muted small-note" style="margin-top:6px;">
+            • Click <strong>Get Question</strong> to fetch a new image. <br>
+            • Type your answer and click <strong>Check Answer</strong>. Correct answers add +1. <br>
+            • Click <strong>Submit Score</strong> to save session points to your profile.
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase & compat SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+  <script src="firebase-config.js"></script>
+
+  <script>
+    (function () {
+      // CONFIG: set proxy base or direct API. Use proxy to avoid CORS.
+      const USE_PROXY = true; // set false only if remote has CORS
+      const PROXY_BASE = 'http://localhost:3000/banana'; // your proxy endpoint
+      const API_BASE = 'http://marcconrad.com/uob/banana/api.php';
+
+      // Elements
+      const getQBtn = document.getElementById('getQ');
+      const skipQBtn = document.getElementById('skipQ');
+      const checkBtn = document.getElementById('checkBtn');
+      const nextBtn = document.getElementById('nextBtn');
+      const qImg = document.getElementById('qImg');
+      const imgPlaceholder = document.getElementById('imgPlaceholder');
+      const qMeta = document.getElementById('qMeta');
+      const answerInput = document.getElementById('answerInput');
+      const feedback = document.getElementById('feedback');
+      const scoreSpan = document.getElementById('score');
+      const lastResult = document.getElementById('lastResult');
+      const submitScoreBtn = document.getElementById('submitScore');
+      const playerInfo = document.getElementById('playerInfo');
+      const totalScoreDisplay = document.getElementById('totalScoreDisplay');
+      const gamesPlayedDisplay = document.getElementById('gamesPlayedDisplay');
+
+
+      let currentQuestion = null;
+      let sessionScore = 0;
+      let currentUser = null;
+
+      // Firebase init (if present)
+      let auth = null, db = null;
+      if (typeof firebaseConfig !== 'undefined') {
+        firebase.initializeApp(firebaseConfig);
+        auth = firebase.auth();
+        db = firebase.firestore();
+      }
+
+      // Auth state
+      if (auth) {
+        auth.onAuthStateChanged(async (user) => {
+          currentUser = user;
+          if (!user) {
+            playerInfo.textContent = 'Not signed in - play as guest or sign in.';
+            // clear totals UI
+            if (totalScoreDisplay) totalScoreDisplay.textContent = '—';
+            if (gamesPlayedDisplay) gamesPlayedDisplay.textContent = '—';
+          } else {
+            // show display name or email
+            let display = user.displayName || user.email || 'Player';
+            try {
+              const doc = await db.collection('users').doc(user.uid).get();
+              if (doc.exists && doc.data().name) display = doc.data().name;
+            } catch (e) { /* ignore */ }
+            playerInfo.textContent = `Player: ${display}`;
+
+            // update lastActive
+            try {
+              await db.collection('users').doc(user.uid).set({
+                lastActive: firebase.firestore.FieldValue.serverTimestamp()
+              }, { merge: true });
+            } catch (e) { console.warn(e); }
+
+            // load totals and display them
+            try {
+              await loadUserTotals(user.uid);
+            } catch (e) {
+              console.warn('Could not load user totals on auth change:', e);
+            }
+          }
+          updateSubmitState();
+        });
+      } else {
+        playerInfo.textContent = 'Firebase not configured - local demo mode.';
+        if (totalScoreDisplay) totalScoreDisplay.textContent = '—';
+        if (gamesPlayedDisplay) gamesPlayedDisplay.textContent = '—';
+      }
+
+      // Helpers
+       // helper to read & render the user doc
+    async function loadUserTotals(uid) {
+        if (!db || !uid) {
+          totalScoreDisplay.textContent = '—';
+          gamesPlayedDisplay.textContent = '—';
+          return;
+        }
+        try {
+          const doc = await db.collection('users').doc(uid).get();
+          if (doc.exists) {
+            const data = doc.data();
+            totalScoreDisplay.textContent = data.totalScore ?? 0;
+            gamesPlayedDisplay.textContent = data.gamesPlayed ?? 0;
+          } else {
+            // If no doc, initialize UI zeros
+            totalScoreDisplay.textContent = 0;
+            gamesPlayedDisplay.textContent = 0;
+          }
+        } catch (err) {
+          console.warn('Could not load user totals', err);
+          totalScoreDisplay.textContent = 'err';
+          gamesPlayedDisplay.textContent = 'err';
+        }
+      }
+
+      function setLoadingImg(loadingText = 'Loading image…') {
+        qImg.style.display = 'none';
+        imgPlaceholder.style.display = 'block';
+        imgPlaceholder.textContent = loadingText;
+      }
+      function showImage(urlOrBase64) {
+        imgPlaceholder.style.display = 'none';
+        qImg.style.display = 'block';
+        qImg.src = urlOrBase64;
+      }
+      function clearQuestionUI() {
+        qImg.src = '';
+        qImg.style.display = 'none';
+        imgPlaceholder.style.display = 'block';
+        imgPlaceholder.textContent = 'No question loaded. Click Get Question.';
+        qMeta.innerHTML = '';
+        answerInput.value = '';
+        feedback.textContent = '';
+        lastResult.textContent = '';
+      }
+
+      // Build URL and fetch
+      async function fetchQuestion() {
+        setLoadingImg();
+        try {
+          const base = USE_PROXY ? PROXY_BASE : API_BASE;
+          const url = (USE_PROXY ? (base + '?out=json') : (base + '?out=json'));
+          const res = await fetch(url);
+          if (!res.ok) throw new Error('Network ' + res.status);
+          const data = await res.json();
+          // parse
+          const parsed = parseBananaJson(data);
+          const q = { raw: parsed.raw, fetchedAt: new Date() };
+          if (parsed.imageValue) {
+            const v = parsed.imageValue.value;
+            if (typeof v === 'string' && v.startsWith('http')) q.imageUrl = v;
+            else if (typeof v === 'string') q.base64 = v; // assume base64
+          }
+          q.solution = parsed.solution || null;
+          currentQuestion = q;
+          // render
+          if (q.imageUrl) showImage(q.imageUrl);
+          else if (q.base64) {
+            const src = q.base64.startsWith('data:') ? q.base64 : 'data:image/png;base64,' + q.base64;
+            showImage(src);
+          } else {
+            imgPlaceholder.textContent = 'No image in API response.';
+          }
+          qMeta.innerHTML = ''; // no preview
+          feedback.textContent = 'Question ready';
+        } catch (e) {
+          console.error('Fetch question failed', e);
+          imgPlaceholder.textContent = 'Error loading question: ' + e.message;
+          feedback.textContent = 'Error fetching question: ' + e.message;
+        }
+      }
+
+      // Parse function (as before, concise)
+      function parseBananaJson(json) {
+        const obj = json || {};
+        const keys = Object.keys(obj);
+        const imageCandidates = ['image','img','link','imageUrl','image_url','base64','image_base64','data'];
+        let imageValue = null;
+        for (const k of imageCandidates) if (obj[k]) { imageValue = { key:k, value: obj[k] }; break; }
+        if (!imageValue) {
+          for (const k of keys) {
+            const v = obj[k];
+            if (typeof v === 'string' && v.startsWith('http')) { imageValue = { key:k, value:v }; break; }
+          }
+        }
+        const solCandidates = ['solution','sol','answer','ans','solution_text'];
+        let solution = null;
+        for (const k of solCandidates) if (obj[k]) { solution = String(obj[k]).trim(); break; }
+        if (!solution) {
+          for (const k of keys) {
+            const v = obj[k];
+            if ((typeof v === 'string' || typeof v === 'number') && String(v).length <= 12) { solution = String(v).trim(); break; }
+          }
+        }
+        return { imageValue, solution, raw: obj };
+      }
+
+      // Check answer
+      checkBtn.addEventListener('click', () => {
+        if (!currentQuestion) {
+          feedback.textContent = 'No question loaded - click Get Question';
+          return;
+        }
+        const guess = String(answerInput.value || '').trim();
+        if (!guess) { feedback.textContent = 'Please type an answer'; return; }
+
+        const imgWrap = document.getElementById('imageWrap');
+        if (currentQuestion.solution) {
+          const sol = String(currentQuestion.solution).trim();
+          const ok = sol.toLowerCase() === guess.toLowerCase();
+          if (ok) {
+            sessionScore++;
+            scoreSpan.textContent = sessionScore;
+            lastResult.textContent = `Correct (+1): ${sol}`;
+            lastResult.className = 'result ok';
+            checkBtn.value = '';
+            imgWrap.classList.add('correct');
+            showToast('✅ Correct!');
+          } else {
+            lastResult.textContent = `Wrong - expected: ${sol}`;
+            lastResult.className = 'result bad';
+            imgWrap.classList.add('wrong');
+            showToast('❌ Wrong!');
+          }
+        } else {
+          lastResult.textContent = 'No solution in response; answer recorded locally';
+          lastResult.className = '';
+        }
+
+        setTimeout(() => {
+          imgWrap.classList.remove('correct', 'wrong');
+        }, 1000);
+
+        // store attempt locally to Firestore if available
+        (async () => {
+          if (!db || !currentUser) return;
+          try {
+            await db.collection('attempts').add({
+              uid: currentUser.uid,
+              guess: guess,
+              solution: currentQuestion.solution || null,
+              correct: currentQuestion.solution ? (String(currentQuestion.solution).toLowerCase() === guess.toLowerCase()) : null,
+              questionRaw: currentQuestion.raw || null,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          } catch (e) { console.warn('attempt log failed', e); }
+        })();
+
+        answerInput.value = '';
+        nextBtn.focus();
+        updateSubmitState();
+      });
+
+      nextBtn.addEventListener('click', () => {
+        // clear any last result UI
+        lastResult.textContent = '';
+        lastResult.className = '';
+        feedback.textContent = '';
+        clearQuestionUI(); // resets image placeholder and input
+        fetchQuestion();
+      });
+      
+      // Skip question (just fetch a new one)
+      skipQBtn.addEventListener('click', () => {
+        clearQuestionUI();
+        fetchQuestion();
+      });
+
+      // Get question
+      getQBtn.addEventListener('click', () => {
+        clearQuestionUI();
+        fetchQuestion();
+      });
+
+      // Submit score
+      submitScoreBtn.addEventListener('click', async () => {
+        if (!db || !currentUser) {
+          alert('Please sign in (or sign in as guest) to submit score.');
+          return;
+        }
+        if (sessionScore <= 0) {
+          alert('Session score is 0. Answer questions to get points before submitting.');
+          return;
+        }
+
+        submitScoreBtn.disabled = true;
+        try {
+          // write score document
+          await db.collection('scores').add({
+            uid: currentUser.uid,
+            score: sessionScore,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+
+          // update user totals atomically
+          const userRef = db.collection('users').doc(currentUser.uid);
+          await userRef.set({
+            totalScore: firebase.firestore.FieldValue.increment(sessionScore),
+            gamesPlayed: firebase.firestore.FieldValue.increment(1),
+            lastActive: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+
+          // reload totals so UI reflects the new values immediately
+          try {
+            await loadUserTotals(currentUser.uid);
+          } catch (e) {
+            console.warn('Could not reload user totals after submit:', e);
+          }
+
+          alert('Score submitted: +' + sessionScore);
+
+          // reset session score and update UI
+          sessionScore = 0;
+          scoreSpan.textContent = sessionScore;
+          updateSubmitState();
+        } catch (e) {
+          console.error('Submit failed', e);
+          alert('Error submitting score: ' + e.message);
+        } finally {
+          submitScoreBtn.disabled = false;
+        }
+      });
+
+      function updateSubmitState() {
+        // Enable submit only if user present and sessionScore > 0
+        const canSubmit = (sessionScore > 0) && !!currentUser && !!db;
+        submitScoreBtn.disabled = !canSubmit;
+      }
+
+      // initial UI
+      clearQuestionUI();
+      updateSubmitState();
+
+      // Toast helper
+      function showToast(msg) {
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2000);
+      }
+    })();
+
+  </script>
+</body>
+</html>
