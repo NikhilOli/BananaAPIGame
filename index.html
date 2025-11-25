@@ -2,11 +2,29 @@
 <html>
 <head>
   <meta charset="utf-8"/>
-  <title>Banana Quiz - Home</title>
+  <title>Banana Game - Home</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a class="brand" href="index.html">🍌 Banana Game</a>
+      <nav class="nav">
+        <a class="nav-link" href="index.html">Home</a>
+        <a class="nav-link" href="play.html">Play</a>
+        <a class="nav-link" href="profile.html">Profile</a>
+        <a id="navAuthBtn" class="nav-link" href="login.html">Sign in</a>
+      </nav>
+      <button class="hamburger" aria-label="Open menu">☰</button>
+    </div>
+    <div class="mobile-menu" aria-hidden="true">
+      <a class="mobile-link" href="index.html">Home</a>
+      <a class="mobile-link" href="play.html">Play</a>
+      <a class="mobile-link" href="profile.html">Profile</a>
+      <a id="mobileAuthBtn" class="mobile-link" href="login.html">Sign in</a>
+    </div>
+  </header>
   <div class="center-wrap">
     <div class="card">
       <div class="logo-row">
@@ -14,22 +32,26 @@
         <h1 class="title">Banana Game</h1>
       </div>
 
-      <div id="greeting" class="header-small">Loading…</div>
+      <p class="lead">Play the Banana Game - solve image puzzles and earn points!<br>
+      Sign in to save your progress or continue as guest to try it instantly.</p>
 
-      <p class="lead" id="leadText">Fun quiz prototype — play to earn points and save your progress.</p>
+      <div id="greeting" class="header-small muted">Checking sign-in status...</div>
 
-      <div class="btn-row">
-        <a class="btn primary" id="playBtn" href="play.html">Play Game</a>
-        <a class="btn ghost" id="loginBtn" href="login.html">Sign in</a>
+      <div class="btn-row" style="margin-top:16px;">
+        <a class="btn primary" id="playBtn" href="play.html">🎮 Play Now</a>
+        <a class="btn ghost" id="loginBtn" href="login.html">Sign In</a>
+        <a class="btn ghost" href="register.html">Register</a>
       </div>
 
       <div id="userBadge" style="margin-top:14px;"></div>
 
-      <div class="foot small muted">Demo app for university assignment — auth via Firebase.</div>
+      <div class="foot small muted">
+        Banana Game © 2025 - A mini quiz project built for university coursework.
+      </div>
     </div>
   </div>
 
-  <!-- Firebase CDN -->
+  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
@@ -38,14 +60,13 @@
   <script>
     // initialize firebase
     if (typeof firebaseConfig === 'undefined') {
-      document.getElementById('greeting').textContent = 'Firebase not configured. Copy firebase-config.example.js to firebase-config.js';
-      console.warn('firebaseConfig is missing. Create firebase-config.js locally.');
+      document.getElementById('greeting').textContent = 'Firebase not configured. Please set up firebase-config.js';
+      console.warn('firebaseConfig missing');
     } else {
       firebase.initializeApp(firebaseConfig);
       const auth = firebase.auth();
       const db = firebase.firestore();
 
-      // update UI based on auth state
       auth.onAuthStateChanged(async (user) => {
         const greeting = document.getElementById('greeting');
         const userBadge = document.getElementById('userBadge');
@@ -53,7 +74,7 @@
         const playBtn = document.getElementById('playBtn');
 
         if (user) {
-          // try to get displayName, otherwise read from Firestore user doc
+          // Get name or email
           let displayName = user.displayName || '';
           if (!displayName) {
             try {
@@ -63,8 +84,16 @@
           }
 
           greeting.textContent = `Welcome back, ${displayName || user.email || 'Player'}!`;
-          userBadge.innerHTML = `<div class="badge">${displayName || user.email || user.uid}</div>`;
-          loginBtn.textContent = 'Sign out';
+          userBadge.innerHTML = `<div class="badge" style="
+            display:inline-block;
+            background:rgba(255,255,255,0.08);
+            padding:6px 12px;
+            border-radius:8px;
+            font-size:0.9rem;
+            color:#ffdd57;
+          ">Logged in</div>`;
+
+          loginBtn.textContent = 'Sign Out';
           loginBtn.href = '#';
           loginBtn.addEventListener('click', async (ev) => {
             ev.preventDefault();
@@ -72,20 +101,21 @@
             location.reload();
           });
 
-          // update lastActive
+          // Update last active
           try {
             await db.collection('users').doc(user.uid).set({
               lastActive: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
           } catch (e) { console.warn('Could not update lastActive', e); }
         } else {
-          greeting.textContent = 'Welcome — sign in or play as guest.';
+          greeting.textContent = 'Welcome! Sign in or play as guest.';
           userBadge.innerHTML = '';
-          loginBtn.textContent = 'Sign in';
+          loginBtn.textContent = 'Sign In';
           loginBtn.href = 'login.html';
         }
       });
     }
   </script>
+  <script src="navbar.js"></script>
 </body>
 </html>
