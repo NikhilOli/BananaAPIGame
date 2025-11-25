@@ -2,11 +2,29 @@
 <html>
 <head>
   <meta charset="utf-8"/>
-  <title>Register - Banana Quiz</title>
+  <title>Create account - Banana Quiz</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a class="brand" href="index.html">🍌 Banana Game</a>
+      <nav class="nav">
+        <a class="nav-link" href="index.html">Home</a>
+        <a class="nav-link" href="play.html">Play</a>
+        <a class="nav-link" href="profile.html">Profile</a>
+        <a id="navAuthBtn" class="nav-link" href="login.html">Sign in</a>
+      </nav>
+      <button class="hamburger" aria-label="Open menu">☰</button>
+    </div>
+    <div class="mobile-menu" aria-hidden="true">
+      <a class="mobile-link" href="index.html">Home</a>
+      <a class="mobile-link" href="play.html">Play</a>
+      <a class="mobile-link" href="profile.html">Profile</a>
+      <a id="mobileAuthBtn" class="mobile-link" href="login.html">Sign in</a>
+    </div>
+  </header>
   <div class="center-wrap">
     <div class="card auth-card">
       <div class="logo-row">
@@ -14,10 +32,10 @@
         <h1 class="title">Banana Quiz</h1>
       </div>
 
-      <p class="lead">Create your account and save scores. Quick signup — free forever.</p>
+      <p class="lead">Create your account and save scores. Quick signup - free forever.</p>
 
       <label>Name
-        <input id="name" type="text" placeholder="e.g. Nikhil Rai" />
+        <input id="name" type="text" placeholder="e.g. Adam Cope" />
       </label>
 
       <label>Email
@@ -88,5 +106,6 @@
       }
     });
   </script>
+  <script src="navbar.js"></script>
 </body>
 </html>
