@@ -1,0 +1,166 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Leaderboard - Banana Game</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/leaderboard.css" />
+</head>
+
+<body>
+    <!-- NAVBAR -->
+    <header class="site-header">
+        <div class="site-header-inner">
+            <a class="brand" href="index.html">🍌 Banana Game</a>
+            <nav class="nav">
+                <a class="nav-link" href="index.html">Home</a>
+                <a class="nav-link" href="play.html">Play</a>
+                <a class="nav-link" href="profile.html">Profile</a>
+                <a class="nav-link" href="leaderboard.html">Leaderboard</a>
+                <a id="navAuthBtn" class="nav-link" href="login.html">Sign in</a>
+            </nav>
+            <button class="hamburger" aria-label="Open menu">☰</button>
+        </div>
+        <div class="mobile-menu" data-visible="false">
+            <a class="mobile-link" href="index.html">Home</a>
+            <a class="mobile-link" href="play.html">Play</a>
+            <a class="mobile-link" href="profile.html">Profile</a>
+            <a class="mobile-link" href="leaderboard.html">Leaderboard</a>
+            <a id="mobileAuthBtn" class="mobile-link" href="login.html">Sign in</a>
+        </div>
+    </header>
+
+    <div class="center-wrap">
+        <div class="card leaderboard-card">
+            <div class="lb-header">
+                <div>
+                    <div class="lb-title">Leaderboard</div>
+                    <div class="lb-sub">Top players by total score (all-time).</div>
+                </div>
+                <a href="play.html" class="btn primary" style="padding:8px 12px;font-size:0.85rem;">Play</a>
+            </div>
+
+            <table class="lb-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Player</th>
+                        <th>Total Score</th>
+                        <th>Games</th>
+                    </tr>
+                </thead>
+                <tbody id="lbBody">
+                    <tr>
+                        <td colspan="4" class="lb-empty">Loading leaderboard…</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div id="lbStatus" class="lb-status"></div>
+
+            <div class="foot small muted">
+                Leaderboard is based on totalScore field in the users collection.
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+    <script src="firebase-config.js"></script>
+
+    <script>
+        (function () {
+            const bodyEl = document.getElementById('lbBody');
+            const statusEl = document.getElementById('lbStatus');
+
+            if (typeof firebaseConfig === 'undefined') {
+                bodyEl.innerHTML = '<tr><td colspan="4" class="lb-empty">Firebase not configured. Please set up firebase-config.js locally.</td></tr>';
+                statusEl.textContent = '';
+                return;
+            }
+
+            firebase.initializeApp(firebaseConfig);
+            const auth = firebase.auth();
+            const db = firebase.firestore();
+
+            let currentUserId = null;
+
+            auth.onAuthStateChanged((user) => {
+                currentUserId = user ? user.uid : null;
+                loadLeaderboard();
+            });
+
+            async function loadLeaderboard() {
+                statusEl.textContent = 'Loading leaderboard…';
+                try {
+                    // get top 10 users ordered by totalScore desc
+                    const snap = await db.collection('users')
+                        .orderBy('totalScore', 'desc')
+                        .limit(10)
+                        .get();
+
+                    if (snap.empty) {
+                        bodyEl.innerHTML = '<tr><td colspan="4" class="lb-empty">No players yet. Play a game to appear on the leaderboard.</td></tr>';
+                        statusEl.textContent = '';
+                        return;
+                    }
+
+                    let rank = 1;
+                    let html = '';
+                    snap.forEach(doc => {
+                        const data = doc.data();
+                        const name = data.name || data.email || 'Player';
+                        const totalScore = data.totalScore ?? 0;
+                        const gamesPlayed = data.gamesPlayed ?? 0;
+                        const isMe = currentUserId && currentUserId === doc.id;
+
+                        const rowClass = isMe ? 'lb-row-me' : '';
+                        html += `
+              <tr class="${rowClass}">
+                <td class="lb-rank">${rank}</td>
+                <td class="lb-name">${escapeHtml(name)}</td>
+                <td class="lb-score">${totalScore}</td>
+                <td class="lb-games">${gamesPlayed}</td>
+              </tr>
+            `;
+                        rank++;
+                    });
+
+                    bodyEl.innerHTML = html;
+                    if (currentUserId) {
+                        statusEl.textContent = 'Your row is highlighted if you are in the top 10.';
+                    } else {
+                        statusEl.textContent = 'Sign in to see if you appear on the leaderboard.';
+                    }
+
+                } catch (e) {
+                    console.error('Error loading leaderboard', e);
+                    bodyEl.innerHTML = '<tr><td colspan="4" class="lb-empty">Could not load leaderboard. Please try again later.</td></tr>';
+                    statusEl.textContent = 'Error: ' + e.message;
+                }
+            }
+
+            function escapeHtml(str) {
+                return String(str || '').replace(/[&<>"']/g, function (m) {
+                    return ({
+                        '&': '&amp;',
+                        '<': '&lt;',
+                        '>': '&gt;',
+                        '"': '&quot;',
+                        "'": '&#39;'
+                    })[m] || m;
+                });
+            }
+        })();
+    </script>
+
+    <!-- navbar behaviour -->
+    <script src="navbar.js"></script>
+</body>
+
+</html>

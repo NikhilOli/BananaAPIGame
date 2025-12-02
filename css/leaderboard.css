@@ -1,0 +1,102 @@
+.leaderboard-card {
+            width: 600px;
+            max-width: 96%;
+            text-align: left;
+        }
+
+        .lb-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .lb-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .lb-sub {
+            font-size: 0.9rem;
+            color: rgba(220, 236, 255, 0.7);
+        }
+
+        .lb-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+
+        .lb-table thead {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .lb-table th,
+        .lb-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            text-align: left;
+        }
+
+        .lb-table th {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: rgba(220, 236, 255, 0.75);
+        }
+
+        .lb-row-me {
+            background: rgba(255, 221, 87, 0.08);
+        }
+
+        .lb-row-me td {
+            border-bottom: 1px solid rgba(255, 221, 87, 0.35);
+        }
+
+        .lb-rank {
+            width: 40px;
+            font-weight: 700;
+            color: #ffdd57;
+        }
+
+        .lb-name {
+            font-weight: 600;
+            color: #eef6ff;
+        }
+
+        .lb-score {
+            font-weight: 700;
+            color: #ffdd57;
+        }
+
+        .lb-games {
+            color: rgba(220, 236, 255, 0.85);
+        }
+
+        .lb-empty {
+            padding: 10px 0;
+            font-size: 0.9rem;
+            color: rgba(220, 236, 255, 0.7);
+        }
+
+        .lb-status {
+            margin-top: 10px;
+            font-size: 0.85rem;
+            color: rgba(220, 236, 255, 0.75);
+            min-height: 18px;
+        }
+
+        @media (max-width:600px) {
+            .leaderboard-card {
+                width: 94%;
+            }
+
+            .lb-table th:nth-child(4),
+            .lb-table td:nth-child(4) {
+                display: none;
+                /* hide games played on very small widths if needed */
+            }
+        }
